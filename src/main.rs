@@ -9,6 +9,21 @@ fn main() {
     let matches = commands::cli().get_matches();
 
     match matches.subcommand() {
+        Some(("account", sub_matches)) => {
+            let subcommands = sub_matches.subcommand.unwrap();
+
+            match subcommands {
+                ("active", args) => {
+                    .
+                }
+                ("edit", args) => {
+                    .
+                }
+                ("transfer", args) => {
+                    .
+                }
+            }
+        }
         Some(("backup", args)) => {
             let filename = args.value_of("FILENAME").expect("Required...");
             let backup_path = PathBuf::from(format!("./{}.db3", filename));
