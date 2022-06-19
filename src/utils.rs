@@ -9,3 +9,11 @@ pub fn item_type_to_table_name(item_type: &str) -> String {
         _ => unreachable!()
     }
 }
+
+pub fn validate_tables(e_msg: &str, table_name: &str) {
+    if e_msg.contains("no such table:") {
+        println!("Table '{}' not found! Try 'wallet init' before use it.", table_name);
+    } else {
+        println!("Something went wrong with the query!");
+    }
+}
