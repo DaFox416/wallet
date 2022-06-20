@@ -55,7 +55,10 @@ fn main() {
 
             let table_name = utils::item_type_to_table_name(item_type);
 
-            walletdb::list(&table_name, count).unwrap();
+            match walletdb::list(&table_name, count) {
+                Err(e) => utils::validate_tables(&format!("{}", e), &table_name),
+                _ => ()
+            }
         }
         Some(("new", sub_matches)) => {
             let new_subcommands = sub_matches.subcommand().unwrap();
