@@ -1,6 +1,6 @@
 use clap::{arg, Command};
 
-const ITEM_TYPES: [&str, 6] = ["account", "transaction", "payment", "saving", "queued", "msi"];
+const ITEM_TYPES: [&str; 6] = ["account", "transaction", "payment", "saving", "queued", "msi"];
 
 pub fn cli() -> Command<'static> {
     Command::new("wallet")
@@ -25,8 +25,8 @@ pub fn cli() -> Command<'static> {
                         .arg_required_else_help(true)
                         .args([
                             arg!(-i --id <ID> "ID of the account to edit."),
-                            arg!(-n --name <NAME> "New name to the account.").default("keep"),
-                            arg!(-b --balance <BALANCE> "New balance of the account.").default("keep")
+                            arg!(-n --name <NAME> "New name to the account.").default_value("keep"),
+                            arg!(-b --balance <BALANCE> "New balance of the account.").default_value("keep")
                         ])
                 )
                 .subcommand(
