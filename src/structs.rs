@@ -26,11 +26,15 @@ impl Account {
 
     pub fn empty() -> Account {
         Account {
-            id: 0,
+            id: -1,
             name: "".to_string(),
             balance: 0.0,
             active: 0
         }
+    }
+
+    pub fn exists(&self) -> bool {
+        self.id != -1
     }
 
     pub fn from_row(row: &Row<'_>) -> Account {
