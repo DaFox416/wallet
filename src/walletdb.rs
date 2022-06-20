@@ -70,7 +70,7 @@ pub fn delete_items(
             Ok(0) => {
                 println!("Zero rows deleted!");
                 if delete_all {
-                    println!("Table '{}' is empty. Try 'wallet new [TYPE]' before delete.", table_name);
+                    println!("Table '{}' is empty. Try 'wallet new --help'.", table_name);
                 } else {
                     println!("Not found account with id '{}'.", id);
                 }
@@ -170,8 +170,15 @@ pub fn list(table_name: &str, count: i64) -> rusqlite::Result<()> {
         _ => panic!("Not implemented yet!")
     };
 
+    let mut items_len = 0;
+
     for item in items {
+        items_len += 1;
         println!("{}", item.unwrap());
+    }
+
+    if items_len == 0 {
+        println!("Table '{}' is empty! Try 'wallet new --help'.", table_name);
     }
 
     stmt.finalize()?;
