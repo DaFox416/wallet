@@ -10,18 +10,19 @@ fn main() {
 
     match matches.subcommand() {
         Some(("account", sub_matches)) => {
-            let subcommands = sub_matches.subcommand.unwrap();
+            let account_subcommands = sub_matches.subcommand().unwrap();
 
-            match subcommands {
+            match account_subcommands {
                 ("active", args) => {
-                    .
+                    println!("...");
                 }
                 ("edit", args) => {
-                    .
+                    println!("...");
                 }
                 ("transfer", args) => {
-                    .
+                    println!("...");
                 }
+                _ => unreachable!()
             }
         }
         Some(("backup", args)) => {
