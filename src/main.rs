@@ -14,7 +14,9 @@ fn main() {
 
             match account_subcommands {
                 ("active", args) => {
-                    println!("...");
+                    let id: i64 = args.value_of_t("ID").expect("Required...");
+
+                    walletdb::account_active(id).unwrap();
                 }
                 ("edit", args) => {
                     println!("...");
