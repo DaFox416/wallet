@@ -28,6 +28,40 @@ fn select_account(conn: &Connection, id: i64) -> rusqlite::Result<Account> {
     Ok(account)
 }
 
+// Wallet 'account' subcommands are defined below.
+pub fn account_active(id: i64) -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
+
+    let account = select_account(&conn, id)?;
+
+    if account.is_active() {
+        println!("This account is already active!");
+        println!("{}", account);
+
+        return Ok(());
+    } else if !account.exists() {
+        println!("The ID '{}' was not found in accounts!", id);
+
+        return Ok(());
+    }
+
+    match conn.execute("UPDATE accounts SET active = 0 WHERE active = 1", []) {
+        Err(e) => utils::validate_tables(&format!("{}", e), "accounts"),
+        _ => ()
+    };
+
+    match conn.execute(
+        "UPDATE accounts SET active = ?1 WHERE id_account = ?2",
+        params![1, id]
+    ) {
+        Ok(1) => println!("Success! This account is now active!"),
+        Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
+        Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
+    };
+
+    Ok(())
+}
+
 // Wallet subcommands are defined below.
 pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
     match fs::copy(DB_NAME, backup_path.to_str().unwrap()) {
