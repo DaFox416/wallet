@@ -221,7 +221,7 @@ pub fn list(table_name: &str, count: i64) -> rusqlite::Result<()> {
 }
 
 // Wallet 'new' subcommands are defined below.
-pub fn new_account(name: &str, balance: &f64) -> rusqlite::Result<()> {
+pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
     let exists_account = match conn.execute("SELECT * FROM accounts", []) {

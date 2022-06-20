@@ -70,7 +70,7 @@ fn main() {
                     let name = args.value_of("NAME").expect("Required...");
                     let balance: f64 = args.value_of_t("BALANCE").expect("Required...");
 
-                    walletdb::new_account(&name, &balance).unwrap();
+                    walletdb::new_account(&name, balance).unwrap();
                 }
                 ("expense", args) => {
                     let message = args.value_of("MESSAGE").expect("Required...");
