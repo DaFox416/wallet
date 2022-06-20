@@ -70,7 +70,7 @@ pub fn cli() -> Command<'static> {
                 .arg_required_else_help(true)
                 .args([
                     arg!([ITEM] "Item type to list.").possible_values(ITEM_TYPES),
-                    arg!(-c --count <COUNT> "Number of items required to list.").default_value("10"),
+                    arg!(-c --count [COUNT] "Number of items required to list.").default_value("10"),
                     arg!(--all "List all items in table")
                 ])
         )
