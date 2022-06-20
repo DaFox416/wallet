@@ -50,11 +50,11 @@ fn main() {
         }
         Some(("list", args)) => {
             let item_type = args.value_of("ITEM").expect("Required...");
+            let count: i64 = args.value_of_t("count").expect("Required...");
 
             let table_name = utils::item_type_to_table_name(item_type);
-            let id_name = format!("id_{}", item_type).to_string();
 
-            walletdb::list(&table_name, &id_name).unwrap();
+            walletdb::list(&table_name, count).unwrap();
         }
         Some(("new", sub_matches)) => {
             let new_subcommands = sub_matches.subcommand().unwrap();
