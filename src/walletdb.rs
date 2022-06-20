@@ -1,4 +1,5 @@
 use crate::structs::{Account};
+use crate::utils;
 
 use std::io;
 use std::fs;
@@ -76,9 +77,7 @@ pub fn delete_items(
             }
             Ok(n_rows) => println!("Successfully deleted {} rows!", n_rows),
             Err(e) => {
-                if format!("{}", e).contains("no such table:") {
-                    println!("Table '{}' not found! Try 'wallet init' before use it.", table_name);
-                }
+                utils::validate_tables(&format!("{}", e), table_name);
             }
         }
     }
@@ -131,6 +130,7 @@ pub fn initialize_database() -> rusqlite::Result<()> {
             goal            INTEGER NOT NULL,
             balance         INTEGER NOT NULL,
             id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
         )", []
     )?;
 
@@ -161,17 +161,17 @@ pub fn initialize_database() -> rusqlite::Result<()> {
     Ok(())
 }
 
-// Wallet 'list' subcommands are defined below.
-pub fn list(table_name: &str, id_name: &str) -> rusqlite::Result<()> {
+pub fn list(table_name: &str, count: i64) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
-    let mut stmt = conn.prepare("SELECT * FROM accounts")?;
+    let mut stmt = conn.prepare(&format!("SELECT * FROM {} LIMIT {}", table_name, count))?;
 
-    let accounts = stmt.query_map([], |row| {
-        Ok( Account::from_row(row) )
-    })?;
+    let items = match table_name {
+        "accounts" => stmt.query_map([], |row| Ok(Account::from_row(row)))?,
+        _ => panic!("Not implemented yet!")
+    };
 
-    for account in accounts {
-        println!("{}", account.unwrap());
+    for item in items {
+        println!("{}", item.unwrap());
     }
 
     stmt.finalize()?;
@@ -184,20 +184,27 @@ pub fn new_account(name: &str, balance: &f64) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
     let exists_account = match conn.execute("SELECT * FROM accounts", []) {
-        Ok(_) => { true }
-        Err(_) => { false }
+        Ok(_) => { false }
+        Err(_) => { true }
     };
 
-    let active: i64 = if exists_account { 1 } else { 0 };
+    let active: i64 = if exists_account { 0 } else { 1 };
     let int_balance: i64 = (balance * 100.0).round() as i64;
 
-    conn.execute(
+    let result = conn.execute(
         "INSERT INTO accounts (name, balance, active) VALUES (?1, ?2, ?3)",
         params![name, int_balance, active]
-    )?;
+    );
 
-    println!("Success!");
-    println!("New account {} - ${:.2}  {}", name, balance, if active == 1 { "Active" } else { "Inactive" } );
+    match result {
+        Ok(_) => {
+            println!("Successfully created new account!");
+            println!("New account {} - ${:.2}  {}", name, balance, if active == 1 { "Active" } else { "Inactive" } );
+        },
+        Err(e) => {
+            utils::validate_tables(&format!("{}", e), "accounts");
+        }
+    }
 
     conn.close().unwrap();
     Ok(())
