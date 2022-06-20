@@ -17,14 +17,14 @@ pub fn cli() -> Command<'static> {
                     Command::new("active")
                         .about("Set one account as the active account. *This deactivates all other accounts.")
                         .arg_required_else_help(true)
-                        .arg(arg!(-i --id <ID> "ID of the account to set active."))
+                        .arg(arg!([ID] "ID of the account to set active."))
                 )
                 .subcommand(
                     Command::new("edit")
                         .about("Edit the data of an account.")
                         .arg_required_else_help(true)
                         .args([
-                            arg!(-i --id <ID> "ID of the account to edit."),
+                            arg!([ID] "ID of the account to edit."),
                             arg!(-n --name <NAME> "New name to the account.").default_value("keep"),
                             arg!(-b --balance <BALANCE> "New balance of the account.").default_value("keep")
                         ])
