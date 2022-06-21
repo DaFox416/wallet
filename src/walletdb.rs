@@ -7,9 +7,9 @@ use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
 
-const DB_NAME: &str = "./wallet.db3";
+const DB_NAME: &str = "wallet.db3";
 
-// Functions to read rows as structs.
+// Functions to read/write rows using structs.
 fn select_account(conn: &Connection, id: i64) -> rusqlite::Result<Account> {
     let mut stmt = conn.prepare("SELECT * FROM accounts WHERE id_account=?")?;
     let account: Account;
@@ -26,6 +26,24 @@ fn select_account(conn: &Connection, id: i64) -> rusqlite::Result<Account> {
     stmt.finalize()?;
 
     Ok(account)
+}
+
+fn update_account(conn_ &Connection, account: Account) -> rusqlite::Result<()> {
+    let int_balance: i64 = (account.balance * 100.0).round() as i64;
+    
+    match conn.execute(
+        "UPDATE accounts
+        SET name = ?1, balance = ?2
+        WHERE id_account = ?3
+        ",
+        params![&account.name, int_balance, account.id]
+    ) {
+        Ok(1) => println!("Successfully updated account data!"),
+        Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
+        Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
+    }
+
+    Ok(())
 }
 
 // Wallet 'account' subcommands are defined below.
@@ -58,6 +76,12 @@ pub fn account_active(id: i64) -> rusqlite::Result<()> {
         Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
         Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
     };
+
+    Ok(())
+}
+
+pub fn account_edit(id: i64, name: &str, balance: f64) -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
 
     Ok(())
 }
