@@ -25,8 +25,8 @@ pub fn cli() -> Command<'static> {
                         .arg_required_else_help(true)
                         .args([
                             arg!([ID] "ID of the account to edit."),
-                            arg!(-n --name <NAME> "New name to the account.").default_value("keep"),
-                            arg!(-b --balance <BALANCE> "New balance of the account.").default_value("keep")
+                            arg!(-n --name <NAME> "New name to the account.").required(false),
+                            arg!(-b --balance <BALANCE> "New balance of the account.").required(false)
                         ])
                 )
                 .subcommand(
@@ -36,7 +36,7 @@ pub fn cli() -> Command<'static> {
                         .args([
                             arg!(-b --balance <BALANCE> "Balance to transfer."),
                             arg!(-d --destination <DESTINATION> "ID of the destination account."),
-                            arg!(-s --source <SOURCE> "ID of the source account.").default_value("active")
+                            arg!(-s --source <SOURCE> "ID of the source account.").required(false)
                         ])
                 )
         )
@@ -54,9 +54,14 @@ pub fn cli() -> Command<'static> {
                 .arg_required_else_help(true)
                 .args(&[
                     arg!([ITEM] "Item type to delete.").possible_values(ITEM_TYPES),
-                    arg!(-i --id [ID] "ID of the item to delete.").default_value("0"),
+                    arg!(-i --id [ID] "ID of the item to delete.").required(false),
                     arg!(--all "Deletes all items in table.")
                 ])
+        )
+        // Dequeue subcommand.
+        .subcommand(
+            Command::new("dequeue")
+                .about("Dequeue purchases from queued list.")
         )
         // Init subcommand.
         .subcommand(
@@ -115,8 +120,7 @@ pub fn cli() -> Command<'static> {
                         .arg_required_else_help(true)
                         .args(&[
                             arg!([MESSAGE] "Message of the expense to queue."),
-                            arg!([VALUE] "Value of the expense to queue."),
-                            arg!(--dequeue "Execute all queued items as expenses.")
+                            arg!([VALUE] "Value of the expense to queue.")
                         ])
                 )
         )
