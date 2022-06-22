@@ -19,7 +19,11 @@ fn main() {
                     walletdb::account_active(id).unwrap();
                 }
                 ("edit", args) => {
-                    println!("...");
+                    let id: i64 = args.value_of_t("ID").expect("Required...");
+                    let opt_name = args.value_of("name");
+                    let opt_balance = args.value_of("balance");
+
+                    walletdb::account_edit(id, opt_name, opt_balance).unwrap();
                 }
                 ("transfer", args) => {
                     println!("...");
