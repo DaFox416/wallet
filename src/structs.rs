@@ -4,7 +4,7 @@ use rusqlite::Row;
 
 #[derive(Debug)]
 pub struct Account {
-    id: i64,
+    pub id: i64,
     pub name: String,
     pub balance: f64,
     active: i64
