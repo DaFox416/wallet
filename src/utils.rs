@@ -17,3 +17,7 @@ pub fn validate_tables(e_msg: &str, table_name: &str) {
         println!("Something went wrong with the query!");
     }
 }
+
+pub fn valid_price(price: f64, limit: f64) -> bool {
+    price > 0.01 && price < limit
+}
