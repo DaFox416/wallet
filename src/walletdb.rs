@@ -28,7 +28,7 @@ fn select_account(conn: &Connection, id: i64) -> rusqlite::Result<Account> {
     Ok(account)
 }
 
-fn update_account(conn_ &Connection, account: Account) -> rusqlite::Result<()> {
+fn update_account(conn: &Connection, account: &Account) {
     let int_balance: i64 = (account.balance * 100.0).round() as i64;
     
     match conn.execute(
@@ -42,8 +42,6 @@ fn update_account(conn_ &Connection, account: Account) -> rusqlite::Result<()> {
         Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
         Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
     }
-
-    Ok(())
 }
 
 // Wallet 'account' subcommands are defined below.
@@ -80,8 +78,48 @@ pub fn account_active(id: i64) -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn account_edit(id: i64, name: &str, balance: f64) -> rusqlite::Result<()> {
+pub fn account_edit(
+            id: i64, opt_name: Option<&str>, opt_balance: Option<&str>
+        ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
+
+    let mut account = select_account(&conn, id)?;
+
+    if !account.exists() {
+        return Ok(());
+    } else {
+        println!("Account to update:\n{}", account);
+    }
+
+    let mut value_received = false;
+
+    if let Some(name) = opt_name {
+        account.name = name.to_string();
+        value_received = true;
+    }
+
+    if let Some(balance) = opt_balance {
+        account.balance = match balance.parse::<f64>() {
+            Ok(new_balance) => {
+                value_received = true;
+                new_balance
+            },
+            Err(_) => {
+                println!("Invalid value for balance '{}'! Please enter a real number...", balance);
+                account.balance
+            }
+        }
+    }
+
+    if !value_received {
+        println!("You must provide at least one valid value to update!");
+        println!("The account will keep its values.");
+        return Ok(());
+    }
+
+    update_account(&conn, &account);
+
+    println!("Resulting account:\n{}", account);
 
     Ok(())
 }
@@ -102,11 +140,11 @@ pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
 }
 
 pub fn delete_items(
-        table_name: &str,
-        id_name: &str,
-        id: i64,
-        delete_all: bool
-    ) -> rusqlite::Result<()> {
+            table_name: &str,
+            id_name: &str,
+            id: i64,
+            delete_all: bool
+        ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
     let (account, query) = if delete_all {
