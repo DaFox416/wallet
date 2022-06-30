@@ -103,7 +103,8 @@ pub fn cli() -> Command<'static> {
                             arg!([MESSAGE] "Message of the expense."),
                             arg!([VALUE] "Value of the expense."),
                             arg!(-c --charged "Add this if the expense is already charged in the account."),
-                            arg!(--force_price "Add this only if the value can be greater than account balance.")
+                            arg!(--force_price "Add this only if the value can be greater than account balance."),
+                            arg!(-a --account <ACCOUNT> "ID of the account of this expense. *Only if is not the active account.").required(false)
                         ])
                 )
                 .subcommand(
