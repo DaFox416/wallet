@@ -26,7 +26,7 @@ fn main() {
                     walletdb::account_edit(id, opt_name, opt_balance).unwrap();
                 }
                 ("transfer", args) => {
-                    println!("...");
+                    println!("Unimplemented...");
                 }
                 _ => unreachable!()
             }
@@ -80,8 +80,10 @@ fn main() {
                     let message = args.value_of("MESSAGE").expect("Required...");
                     let value: f64 = args.value_of_t("VALUE").expect("Required...");
                     let charged = args.is_present("charged");
+                    let force_price = args.is_present("force_price");
+                    let opt_id_account = args.value_of("account");
 
-                    println!("New expense: {} - {:.2} - {}", &message, &value, &charged);
+                    walletdb::new_expense(&message, value, charged, force_price, opt_id_account).unwrap();
                 }
                 ("incoming", args) => {
                     let message = args.value_of("MESSAGE").expect("Required...");
