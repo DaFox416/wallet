@@ -5,20 +5,35 @@ use std::io;
 use std::fs;
 use std::path::PathBuf;
 
+use chrono::prelude::{DateTime, Local};
+
 use rusqlite::{params, Connection};
 
 const DB_NAME: &str = "wallet.db3";
 
 // Functions to read/write rows using structs.
-fn select_account(conn: &Connection, id: i64) -> rusqlite::Result<Account> {
-    let mut stmt = conn.prepare("SELECT * FROM accounts WHERE id_account=?")?;
+fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Result<Account> {
+    let id_or_active: i64;
+    let mut stmt = if let Some(str_id) = opt_str_id {
+        id_or_active = match str_id.parse() {
+            Ok(ok_id) => ok_id,
+            Err(_) => {
+                panic!("Invalid ID value '{}' (it must be an unsigned integer)!", str_id);
+            }
+        };
+        conn.prepare("SELECT * FROM accounts WHERE id_account=?")?
+    } else {
+        id_or_active = 1;
+        conn.prepare("SELECT * FROM accounts WHERE active=?")?
+    };
+
     let account: Account;
     {
-        let mut rows = stmt.query(params![id])?;
+        let mut rows = stmt.query(params![id_or_active])?;
         account = if let Some(row) = rows.next()? {
             Account::from_row(row)
         } else {
-            println!("Account with ID '{}' not found!", id);
+            println!("Account with ID '{}' not found or the ID is invalid!", id_or_active);
             Account::empty()
         };
     }
@@ -45,10 +60,10 @@ fn update_account(conn: &Connection, account: &Account) {
 }
 
 // Wallet 'account' subcommands are defined below.
-pub fn account_active(id: i64) -> rusqlite::Result<()> {
+pub fn account_active(id: &str) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
-    let account = select_account(&conn, id)?;
+    let account = select_account(&conn, Some(id))?;
 
     if account.is_active() {
         println!("This account is already active!");
@@ -79,11 +94,11 @@ pub fn account_active(id: i64) -> rusqlite::Result<()> {
 }
 
 pub fn account_edit(
-            id: i64, opt_name: Option<&str>, opt_balance: Option<&str>
+            id: &str, opt_name: Option<&str>, opt_balance: Option<&str>
         ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
-    let mut account = select_account(&conn, id)?;
+    let mut account = select_account(&conn, Some(id))?;
 
     if !account.exists() {
         return Ok(());
@@ -142,7 +157,7 @@ pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
 pub fn delete_items(
             table_name: &str,
             id_name: &str,
-            id: i64,
+            id: &str,
             delete_all: bool
         ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
@@ -154,7 +169,7 @@ pub fn delete_items(
         )
     } else {
         (
-            select_account(&conn, id)?,
+            select_account(&conn, Some(id))?,
             format!("DELETE FROM {} WHERE {} = {}", table_name, id_name, id).to_string()
         )
     };
@@ -246,7 +261,7 @@ pub fn initialize_database() -> rusqlite::Result<()> {
         "CREATE TABLE IF NOT EXISTS queued_purchases (
             id_queued       INTEGER PRIMARY KEY,
             message         TEXT NOT NULL,
-            value           INTEGER NOT NULL,
+            price           INTEGER NOT NULL,
             id_account      INTEGER NOT NULL,
             FOREIGN KEY (id_account) REFERENCES accounts (id_account)
         )", []
@@ -310,5 +325,18 @@ pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
     }
 
     conn.close().unwrap();
+    Ok(())
+}
+
+pub fn new_expense(
+            message: &str, value: f64, charged: bool, force_price: bool,
+            opt_id_account: Option<&str>
+        ) -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
+
+    let account = select_account(&conn, opt_id_account)?;
+
+    println!("{}", account);
+
     Ok(())
 }
