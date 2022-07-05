@@ -52,3 +52,13 @@ impl Account {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct Transaction {
+    pub id: i64,
+    pub message: String,
+    pub value: f64,
+    pub date: String,
+    pub charged: i64,
+    pub in_out: i64
+}
