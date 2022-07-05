@@ -14,12 +14,12 @@ fn main() {
 
             match account_subcommands {
                 ("active", args) => {
-                    let id: i64 = args.value_of_t("ID").expect("Required...");
+                    let id = args.value_of("ID").expect("Required...");
 
                     walletdb::account_active(id).unwrap();
                 }
                 ("edit", args) => {
-                    let id: i64 = args.value_of_t("ID").expect("Required...");
+                    let id = args.value_of("ID").expect("Required...");
                     let opt_name = args.value_of("name");
                     let opt_balance = args.value_of("balance");
 
@@ -39,7 +39,7 @@ fn main() {
         }
         Some(("delete", args)) => {
             let item_type = args.value_of("ITEM").expect("Required...");
-            let id_item: i64 = args.value_of_t("id").expect("Required...");
+            let id_item = args.value_of("id").expect("Required...");
             let delete_all = args.is_present("all");
 
             let table_name = utils::item_type_to_table_name(item_type);
