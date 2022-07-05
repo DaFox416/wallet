@@ -16,6 +16,9 @@ fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Resu
     let id_or_active: i64;
     let mut stmt = if let Some(str_id) = opt_str_id {
         id_or_active = match str_id.parse() {
+            Ok(neg_id) if neg_id < 0 => {
+                panic!("The ID is negative! You must provide an unsigned integer.");
+            }
             Ok(ok_id) => ok_id,
             Err(_) => {
                 panic!("Invalid ID value '{}' (it must be an unsigned integer)!", str_id);
