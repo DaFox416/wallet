@@ -13,30 +13,21 @@ const DB_NAME: &str = "wallet.db3";
 
 // Functions to read/write rows using structs.
 fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Result<Account> {
-    let id_or_active: i64;
-    let mut stmt = if let Some(str_id) = opt_str_id {
-        id_or_active = match str_id.parse() {
-            Ok(neg_id) if neg_id < 0 => {
-                panic!("The ID is negative! You must provide an unsigned integer.");
-            }
-            Ok(ok_id) => ok_id,
-            Err(_) => {
-                panic!("Invalid ID value '{}' (it must be an unsigned integer)!", str_id);
-            }
-        };
-        conn.prepare("SELECT * FROM accounts WHERE id_account=?")?
+    let opt_id = utils::opt_str_to_opt_i64(opt_str_id);
+
+    let mut stmt = if let Some(id) = opt_id {
+        conn.prepare(&format!("SELECT * FROM accounts WHERE id_account={}", id))?
     } else {
-        id_or_active = 1;
-        conn.prepare("SELECT * FROM accounts WHERE active=?")?
+        conn.prepare("SELECT * FROM accounts WHERE active=1")?
     };
 
     let account: Account;
     {
-        let mut rows = stmt.query(params![id_or_active])?;
+        let mut rows = stmt.query([])?;
         account = if let Some(row) = rows.next()? {
             Account::from_row(row)
         } else {
-            println!("Account with ID '{}' not found or the ID is invalid!", id_or_active);
+            println!("Account with ID '{}' not found or the ID is invalid!", opt_id.unwrap());
             Account::empty()
         };
     }
@@ -88,7 +79,9 @@ pub fn account_active(id: &str) -> rusqlite::Result<()> {
         "UPDATE accounts SET active = ?1 WHERE id_account = ?2",
         params![1, id]
     ) {
-        Ok(1) => println!("Success! This account is now active!"),
+        Ok(1) => {
+            println!("Success! The account '{}' is now active!", account.name);
+        }
         Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
         Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
     };
@@ -160,7 +153,7 @@ pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
 pub fn delete_items(
             table_name: &str,
             id_name: &str,
-            id: &str,
+            opt_id: Option<&str>,
             delete_all: bool
         ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
@@ -170,11 +163,13 @@ pub fn delete_items(
             Account::empty(),
             format!("DELETE FROM {}", table_name).to_string()
         )
-    } else {
+    } else if let Some(id) = opt_id {
         (
             select_account(&conn, Some(id))?,
             format!("DELETE FROM {} WHERE {} = {}", table_name, id_name, id).to_string()
         )
+    } else {
+        panic!("If you won't delete all items you must provide a valid ID!");
     };
 
     if account.is_active() {
@@ -186,7 +181,7 @@ pub fn delete_items(
                 if delete_all {
                     println!("Table '{}' is empty. Try 'wallet new --help'.", table_name);
                 } else {
-                    println!("Not found account with id '{}'.", id);
+                    println!("Not found account with id '{}'.", opt_id.unwrap());
                 }
             }
             Ok(n_rows) => println!("Successfully deleted {} rows!", n_rows),
@@ -208,6 +203,7 @@ pub fn initialize_database() -> rusqlite::Result<()> {
             id_account      INTEGER PRIMARY KEY,
             name            TEXT NOT NULL,
             balance         INTEGER DEFAULT 0,
+            available       INTEGER DEFAULT 0,
             active          INTEGER DEFAULT 0
         )", []
     )?;
@@ -219,7 +215,7 @@ pub fn initialize_database() -> rusqlite::Result<()> {
             value           INTEGER NOT NULL,
             date            INTEGER NOT NULL,
             charged         INTEGER DEFAULT 0,
-            type            INTEGER NOT NULL,
+            flow_type       INTEGER NOT NULL,
             id_account      INTEGER NOT NULL,
             FOREIGN KEY (id_account) REFERENCES accounts (id_account)
         )", []
@@ -313,14 +309,14 @@ pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
     let int_balance: i64 = (balance * 100.0).round() as i64;
 
     let result = conn.execute(
-        "INSERT INTO accounts (name, balance, active) VALUES (?1, ?2, ?3)",
-        params![name, int_balance, active]
+        "INSERT INTO accounts (name, balance, available, active) VALUES (?1, ?2, ?3, ?4)",
+        params![name, int_balance, int_balance, active]
     );
 
     match result {
         Ok(_) => {
             println!("Successfully created new account!");
-            println!("New account {} - ${:.2}  {}", name, balance, if active == 1 { "Active" } else { "Inactive" } );
+            println!("New account {} - ${:.2}", name, balance);
         },
         Err(e) => {
             utils::validate_tables(&format!("{}", e), "accounts");
@@ -338,6 +334,18 @@ pub fn new_expense(
     let conn = Connection::open(DB_NAME)?;
 
     let account = select_account(&conn, opt_id_account)?;
+
+    if value < 0.01 {
+        println!("The value of an expense must be at least one cent '0.01'!");
+
+        return Ok(());
+    }
+    else if value > account.available && !force_price {
+        println!("The account '{}' has no money enough for this purchase!", account.name);
+        println!("Available balance is {} and the purchase price is {}.", account.available, value);
+
+        return Ok(());
+    }
 
     println!("{}", account);
 
