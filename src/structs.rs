@@ -7,21 +7,23 @@ pub struct Account {
     pub id: i64,
     pub name: String,
     pub balance: f64,
-    active: i64
+    pub available: f64,
+    active: bool
 }
 
 impl Display for Account {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:<4}.- ", self.id)?;
+        write!(f, "{}", if self.active { "*" } else { " " })?;
         write!(f, "{:<20} ", self.name)?;
         write!(f, "${:>15.2} ", self.balance)?;
-        write!(f, "{:>10}", if self.active == 0 { "Inactive" } else { "Active" })
+        write!(f, "-> {:>15.2}", self.available)
     }
 }
 
 impl Account {
     pub fn is_active(&self) -> bool {
-        self.active == 1
+        self.active
     }
 
     pub fn empty() -> Account {
@@ -29,7 +31,8 @@ impl Account {
             id: -1,
             name: "".to_string(),
             balance: 0.0,
-            active: 0
+            available: 0.0,
+            active: false
         }
     }
 
@@ -42,12 +45,15 @@ impl Account {
         let name: String = row.get(1).unwrap();
         let int_balance: i64 = row.get(2).unwrap();
         let balance: f64 = int_balance as f64 / 100.0;
-        let active = row.get(3).unwrap();
+        let int_available: i64 = row.get(3).unwrap();
+        let available: f64 = int_available as f64 / 100.0;
+        let active = row.get(4).unwrap();
 
         Account {
             id: id,
             name: name,
             balance: balance,
+            available: available,
             active: active
         }
     }
@@ -59,6 +65,6 @@ pub struct Transaction {
     pub message: String,
     pub value: f64,
     pub date: String,
-    pub charged: i64,
-    pub in_out: i64
+    pub charged: bool,
+    pub flow_type: i64
 }
