@@ -17,3 +17,16 @@ pub fn validate_tables(e_msg: &str, table_name: &str) {
         println!("Something went wrong with the query!");
     }
 }
+
+pub fn opt_str_to_opt_i64(opt_str: Option<&str>) -> Option<i64> {
+    if let Some(str_value) = opt_str {
+        let i64_value = match str_value.parse::<i64>() {
+            Ok(value) => value,
+            Err(_) => panic!("The value '{}' must be an integer value!", str_value)
+        };
+
+        Some(i64_value)
+    } else {
+        None
+    }
+}
