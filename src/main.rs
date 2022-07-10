@@ -39,14 +39,14 @@ fn main() {
         }
         Some(("delete", args)) => {
             let item_type = args.value_of("ITEM").expect("Required...");
-            let id_item = args.value_of("id").expect("Required...");
+            let opt_id_item = args.value_of("id");
             let delete_all = args.is_present("all");
 
             let table_name = utils::item_type_to_table_name(item_type);
             let id_name = format!("id_{}", item_type).to_string();
 
             walletdb::delete_items(
-                &table_name, &id_name, id_item, delete_all
+                &table_name, &id_name, opt_id_item, delete_all
             ).unwrap();
         }
         Some(("init", _)) => {
