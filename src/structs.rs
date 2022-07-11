@@ -13,8 +13,8 @@ pub struct Account {
 
 impl Display for Account {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{:<4}.- ", self.id)?;
-        write!(f, "{}", if self.active { "*" } else { " " })?;
+        write!(f, "{:<4}.-", self.id)?;
+        write!(f, " {} ", if self.active { "*" } else { " " })?;
         write!(f, "{:<20} ", self.name)?;
         write!(f, "${:>15.2} ", self.balance)?;
         write!(f, "-> {:>15.2}", self.available)
