@@ -14,10 +14,10 @@ pub fn cli() -> Command<'static> {
                 .about("Account related subcommands.")
                 .arg_required_else_help(true)
                 .subcommand(
-                    Command::new("active")
-                        .about("Set one account as the active account. *This deactivates all other accounts.")
+                    Command::new("default")
+                        .about("Set an account as the default account.")
                         .arg_required_else_help(true)
-                        .arg(arg!([ID] "ID of the account to set active."))
+                        .arg(arg!([ID] "ID of the account to set default."))
                 )
                 .subcommand(
                     Command::new("edit")
@@ -104,7 +104,7 @@ pub fn cli() -> Command<'static> {
                             arg!([VALUE] "Value of the expense."),
                             arg!(-c --charged "Add this if the expense is already charged in the account."),
                             arg!(--force_price "Add this only if the value can be greater than account balance."),
-                            arg!(-a --account <ACCOUNT> "ID of the account of this expense. *Only if is not the active account.").required(false)
+                            arg!(-a --account <ACCOUNT> "ID of the account of this expense. *Only if is not the default account.").required(false)
                         ])
                 )
                 .subcommand(

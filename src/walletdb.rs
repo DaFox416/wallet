@@ -18,7 +18,7 @@ fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Resu
     let mut stmt = if let Some(id) = opt_id {
         conn.prepare(&format!("SELECT * FROM accounts WHERE id_account={}", id))?
     } else {
-        conn.prepare("SELECT * FROM accounts WHERE active=1")?
+        conn.prepare("SELECT * FROM accounts WHERE is_default=1")?
     };
 
     let account: Account;
@@ -54,13 +54,13 @@ fn update_account(conn: &Connection, account: &Account) {
 }
 
 // Wallet 'account' subcommands are defined below.
-pub fn account_active(id: &str) -> rusqlite::Result<()> {
+pub fn account_default(id: &str) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
     let account = select_account(&conn, Some(id))?;
 
-    if account.is_active() {
-        println!("This account is already active!");
+    if account.default {
+        println!("This is already the default account!");
         println!("{}", account);
 
         return Ok(());
@@ -70,17 +70,17 @@ pub fn account_active(id: &str) -> rusqlite::Result<()> {
         return Ok(());
     }
 
-    match conn.execute("UPDATE accounts SET active = 0 WHERE active = 1", []) {
+    match conn.execute("UPDATE accounts SET is_default = 0 WHERE is_default = 1", []) {
         Err(e) => utils::validate_tables(&format!("{}", e), "accounts"),
         _ => ()
     };
 
     match conn.execute(
-        "UPDATE accounts SET active = ?1 WHERE id_account = ?2",
-        params![1, id]
+        "UPDATE accounts SET is_default = 1 WHERE id_account = ?1",
+        params![id]
     ) {
         Ok(1) => {
-            println!("Success! The account '{}' is now active!", account.name);
+            println!("Success! The account '{}' is now default!", account.name);
         }
         Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
         Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
@@ -116,15 +116,15 @@ pub fn account_edit(
                 new_balance
             },
             Err(_) => {
-                println!("Invalid value for balance '{}'! Please enter a real number...", balance);
-                account.balance
+                panic!("Invalid value for balance '{}'! Please enter a valid real number...", balance);
             }
         }
     }
 
     if !value_received {
-        println!("You must provide at least one valid value to update!");
+        println!("You must provide at least one valid argument to update!");
         println!("The account will keep its values.");
+
         return Ok(());
     }
 
@@ -172,8 +172,8 @@ pub fn delete_items(
         panic!("If you won't delete all items you must provide a valid ID!");
     };
 
-    if account.is_active() {
-        println!("You can't delete the active account.");
+    if account.default && !delete_all {
+        println!("You can't delete the default account unless you delete all.");
     } else {
         match conn.execute(&query, []) {
             Ok(0) => {
@@ -204,7 +204,7 @@ pub fn initialize_database() -> rusqlite::Result<()> {
             name            TEXT NOT NULL,
             balance         INTEGER DEFAULT 0,
             available       INTEGER DEFAULT 0,
-            active          INTEGER DEFAULT 0
+            is_default      INTEGER DEFAULT 0
         )", []
     )?;
 
@@ -305,12 +305,12 @@ pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
         Err(_) => { true }
     };
 
-    let active: i64 = if exists_account { 0 } else { 1 };
+    let default: i64 = if exists_account { 0 } else { 1 };
     let int_balance: i64 = (balance * 100.0).round() as i64;
 
     let result = conn.execute(
-        "INSERT INTO accounts (name, balance, available, active) VALUES (?1, ?2, ?3, ?4)",
-        params![name, int_balance, int_balance, active]
+        "INSERT INTO accounts (name, balance, available, is_default) VALUES (?1, ?2, ?3, ?4)",
+        params![name, int_balance, int_balance, default]
     );
 
     match result {

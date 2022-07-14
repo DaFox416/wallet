@@ -13,10 +13,10 @@ fn main() {
             let account_subcommands = sub_matches.subcommand().unwrap();
 
             match account_subcommands {
-                ("active", args) => {
+                ("default", args) => {
                     let id = args.value_of("ID").expect("Required...");
 
-                    walletdb::account_active(id).unwrap();
+                    walletdb::account_default(id).unwrap();
                 }
                 ("edit", args) => {
                     let id = args.value_of("ID").expect("Required...");

@@ -8,13 +8,13 @@ pub struct Account {
     pub name: String,
     pub balance: f64,
     pub available: f64,
-    active: bool
+    pub default: bool
 }
 
 impl Display for Account {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:<4}.-", self.id)?;
-        write!(f, " {} ", if self.active { "*" } else { " " })?;
+        write!(f, " {} ", if self.default { "*" } else { " " })?;
         write!(f, "{:<20} ", self.name)?;
         write!(f, "${:>15.2} ", self.balance)?;
         write!(f, "-> {:>15.2}", self.available)
@@ -22,17 +22,13 @@ impl Display for Account {
 }
 
 impl Account {
-    pub fn is_active(&self) -> bool {
-        self.active
-    }
-
     pub fn empty() -> Account {
         Account {
             id: -1,
             name: "".to_string(),
             balance: 0.0,
             available: 0.0,
-            active: false
+            default: false
         }
     }
 
@@ -47,14 +43,15 @@ impl Account {
         let balance: f64 = int_balance as f64 / 100.0;
         let int_available: i64 = row.get(3).unwrap();
         let available: f64 = int_available as f64 / 100.0;
-        let active = row.get(4).unwrap();
+        let is_default = row.get(4).unwrap();
+        let default = is_default != 0;
 
         Account {
             id: id,
             name: name,
             balance: balance,
             available: available,
-            active: active
+            default: default
         }
     }
 }
