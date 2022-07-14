@@ -37,13 +37,16 @@ impl Account {
     }
 
     pub fn from_row(row: &Row<'_>) -> Account {
-        let id = row.get(0).unwrap();
+        let id: i64 = row.get(0).unwrap();
         let name: String = row.get(1).unwrap();
+
         let int_balance: i64 = row.get(2).unwrap();
         let balance: f64 = int_balance as f64 / 100.0;
+
         let int_available: i64 = row.get(3).unwrap();
         let available: f64 = int_available as f64 / 100.0;
-        let is_default = row.get(4).unwrap();
+
+        let is_default: i64 = row.get(4).unwrap();
         let default = is_default != 0;
 
         Account {
