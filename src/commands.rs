@@ -20,6 +20,15 @@ pub fn cli() -> Command<'static> {
                         .arg(arg!([ID] "ID of the account to set default."))
                 )
                 .subcommand(
+                    Command::new("delete")
+                        .about("Delete accounts from database.")
+                        .arg_required_else_help(true)
+                        .args([
+                            arg!([ID] "ID of the account to delete. *Omit this if you want to delete all.").required(false),
+                            arg!(--all "Add this if you want to delete all accounts.")
+                        ])
+                )
+                .subcommand(
                     Command::new("edit")
                         .about("Edit the data of an account.")
                         .arg_required_else_help(true)
@@ -46,17 +55,6 @@ pub fn cli() -> Command<'static> {
                 .about("Creates a copy of the current database.")
                 .arg_required_else_help(true)
                 .arg(arg!([FILENAME] "File name of the backup database."))
-        )
-        // Delete subcommand.
-        .subcommand(
-            Command::new("delete")
-                .about("Delete items from database.")
-                .arg_required_else_help(true)
-                .args(&[
-                    arg!([ITEM] "Item type to delete.").possible_values(ITEM_TYPES),
-                    arg!(-i --id [ID] "ID of the item to delete.").required(false),
-                    arg!(--all "Deletes all items in table.")
-                ])
         )
         // Dequeue subcommand.
         .subcommand(
