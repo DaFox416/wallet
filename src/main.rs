@@ -18,6 +18,12 @@ fn main() {
 
                     walletdb::account_default(id).unwrap();
                 }
+                ("delete", args) => {
+                    let id = args.value_of("ID");
+                    let delete_all = args.is_present("all");
+
+                    walletdb::account_delete(id, delete_all).unwrap();
+                }
                 ("edit", args) => {
                     let id = args.value_of("ID").expect("Required...");
                     let opt_name = args.value_of("name");
@@ -36,18 +42,6 @@ fn main() {
             let backup_path = PathBuf::from(format!("./{}.db3", filename));
 
             walletdb::backup_database(&backup_path).unwrap();
-        }
-        Some(("delete", args)) => {
-            let item_type = args.value_of("ITEM").expect("Required...");
-            let opt_id_item = args.value_of("id");
-            let delete_all = args.is_present("all");
-
-            let table_name = utils::item_type_to_table_name(item_type);
-            let id_name = format!("id_{}", item_type).to_string();
-
-            walletdb::delete_items(
-                &table_name, &id_name, opt_id_item, delete_all
-            ).unwrap();
         }
         Some(("init", _)) => {
             match walletdb::initialize_database() {
