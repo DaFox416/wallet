@@ -89,6 +89,44 @@ pub fn account_default(id: &str) -> rusqlite::Result<()> {
     Ok(())
 }
 
+pub fn account_delete(opt_id: Option<&str>, delete_all: bool) -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
+
+    let (account, query) = if delete_all {
+        (
+            Account::empty(),
+            format!("DELETE FROM accounts")
+        )
+    } else if let Some(id) = opt_id {
+        (
+            select_account(&conn, Some(id))?,
+            format!("DELETE FROM accounts WHERE id_account = {}", id).to_string()
+        )
+    } else {
+        panic!("If you won't delete all items you must provide a valid ID!");
+    };
+
+    if account.default && !delete_all {
+        println!("You can't delete the default account unless you delete all.");
+    } else {
+        match conn.execute(&query, []) {
+            Ok(0) => {
+                println!("Zero rows deleted!");
+                if delete_all {
+                    println!("Table 'accounts' is empty. Try 'wallet new --help'.");
+                }
+            }
+            Ok(n_rows) => println!("Successfully deleted {} rows!", n_rows),
+            Err(e) => {
+                utils::validate_tables(&format!("{}", e), "accounts");
+            }
+        }
+    }
+
+    conn.close().unwrap();
+    Ok(())
+}
+
 pub fn account_edit(
             id: &str, opt_name: Option<&str>, opt_balance: Option<&str>
         ) -> rusqlite::Result<()> {
@@ -147,51 +185,6 @@ pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
         }
     }
 
-    Ok(())
-}
-
-pub fn delete_items(
-            table_name: &str,
-            id_name: &str,
-            opt_id: Option<&str>,
-            delete_all: bool
-        ) -> rusqlite::Result<()> {
-    let conn = Connection::open(DB_NAME)?;
-
-    let (account, query) = if delete_all {
-        (
-            Account::empty(),
-            format!("DELETE FROM {}", table_name).to_string()
-        )
-    } else if let Some(id) = opt_id {
-        (
-            select_account(&conn, Some(id))?,
-            format!("DELETE FROM {} WHERE {} = {}", table_name, id_name, id).to_string()
-        )
-    } else {
-        panic!("If you won't delete all items you must provide a valid ID!");
-    };
-
-    if account.default && !delete_all {
-        println!("You can't delete the default account unless you delete all.");
-    } else {
-        match conn.execute(&query, []) {
-            Ok(0) => {
-                println!("Zero rows deleted!");
-                if delete_all {
-                    println!("Table '{}' is empty. Try 'wallet new --help'.", table_name);
-                } else {
-                    println!("Not found account with id '{}'.", opt_id.unwrap());
-                }
-            }
-            Ok(n_rows) => println!("Successfully deleted {} rows!", n_rows),
-            Err(e) => {
-                utils::validate_tables(&format!("{}", e), table_name);
-            }
-        }
-    }
-
-    conn.close().unwrap();
     Ok(())
 }
 
