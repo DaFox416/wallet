@@ -53,7 +53,7 @@ When you list an account it will appears in this line format. Take a look to the
 
     1   .- * Banorte              $        5000.00 ->         5000.00
 
-The first number is its ID in the database. Notice that only this account has a star symbol (__*__) before its name indicating that this is the default account, this is the account all transactions are added to by default. Then you'll see the account name whose length must be less than 20 characters.
+The first number is its ID in the database. Notice that only this account has a star symbol (__*__) before its name indicating that this is the default account, this is the account all transactions are added to by default. The account name length must be less than 20 characters.
 
 Finally you'll see two values: the first one is the balance in the account and must match with the real balance in your bank account; and the second value is the available balance of the account. The available balance must always be equal to or less than the account balance. The available balance could be less than account balance when you register a transaction that is not charged to the account yet, for example: when you have planned or made a purchase, but the money stills in your account, so you must not spend that money in other purchase. in these cases the balance of your account has money that already corresponds to a purchase, so that money is no longer available, resulting in an available balance less than the account balance.
 
@@ -70,3 +70,21 @@ Now if we run again the **list** subcommand we'll get this output:
     1   .-   Banorte              $        5000.00 ->         5000.00
     2   .- * BBVA Bancomer        $        2000.57 ->         2000.57
     3   .-   Banamex              $           0.00 ->            0.00
+
+To delete some account we will use the **account delete** subcommand:
+
+    wallet account delete <ID> [--all]
+
+For this tutorial we will delete the third account 'Banamex'.
+
+    wallet account delete 3
+
+And our accounts now look like this:
+
+    1   .-   Banorte              $        5000.00 ->         5000.00
+    2   .- * BBVA Bancomer        $        2000.57 ->         2000.57
+
+Finally we will delete all accounts:
+
+    wallet account delete --all
+
