@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 use rusqlite::Row;
+use time::Date;
 
 #[derive(Debug)]
 pub struct Account {
@@ -66,5 +67,57 @@ pub struct Transaction {
     pub value: f64,
     pub date: String,
     pub charged: bool,
-    pub flow_type: i64
+    pub t_type: i64,
+    pub id_account: i64
+}
+
+impl Display for Transaction {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:<6}.- ", self.id)?;
+        write!(f, "{}${:>15.2} ", if self.charged { " " } else { "*" }, self.value)?;
+        writeln!(f, "'{}'", self.message)?;
+        write!(f, "         {} {}", self.date, if self.t_type == 0 { ">>>" } else { "<<<" })
+    }
+}
+
+impl Transaction {
+    pub fn empty() -> Transaction {
+        Transaction {
+            id: -1,
+            message: "".to_string(),
+            value: 0.0,
+            date: "".to_string(),
+            charged: false,
+            t_type: -1,
+            id_account: -1
+        }
+    }
+
+    pub fn from_row(row: &Row<'_>) -> Transaction {
+        let id: i64 = row.get(0).unwrap();
+        let message: String = row.get(1).unwrap();
+
+        let int_value: i64 = row.get(2).unwrap();
+        let value: f64 = int_value as f64 / 100.0;
+
+        let julian_date: i32 = row.get(3).unwrap();
+        let date = Date::from_julian_day(julian_date).unwrap();
+        let str_date: String = format!("{}-{}-{}", date.year(), date.month(), date.day());
+
+        let int_charged: i64 = row.get(4).unwrap();
+        let charged = int_charged == 1;
+
+        let t_type: i64 = row.get(5).unwrap();
+        let id_account: i64 = row.get(6).unwrap();
+
+        Transaction {
+            id: id,
+            message: message,
+            value: value,
+            date: str_date,
+            charged: charged,
+            t_type: t_type,
+            id_account: id_account
+        }
+    }
 }
