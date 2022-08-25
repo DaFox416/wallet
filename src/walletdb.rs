@@ -6,10 +6,128 @@ use std::fs;
 use std::path::PathBuf;
 
 use chrono::prelude::{DateTime, Local};
+use time::{Date, format_description};
 
 use rusqlite::{params, Connection};
 
 const DB_NAME: &str = "wallet.db3";
+
+// Wallet subcommands are defined below.
+pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
+    match fs::copy(DB_NAME, backup_path.to_str().unwrap()) {
+        Ok(_) => println!("Backup created successfully!"),
+        Err(e) => {
+            match e.kind() {
+                io::ErrorKind::NotFound => println!("Database does not exists! Try 'wallet init'..."),
+                _ => println!("Something went wrong! Error: {}", e),
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn initialize_database() -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS accounts (
+            id_account      INTEGER PRIMARY KEY,
+            name            TEXT NOT NULL,
+            balance         INTEGER DEFAULT 0,
+            available       INTEGER DEFAULT 0,
+            is_default      INTEGER DEFAULT 0
+        )", []
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS transactions (
+            id_transaction  INTEGER PRIMARY KEY,
+            message         TEXT NOT NULL,
+            value           INTEGER NOT NULL,
+            date            INTEGER NOT NULL,
+            charged         INTEGER DEFAULT 0,
+            t_type          INTEGER NOT NULL,
+            id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
+        )", []
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS payments (
+            id_payment    INTEGER PRIMARY KEY,
+            name            TEXT NOT NULL,
+            price           INTEGER NOT NULL,
+            billing_date    INTEGER NOT NULL,
+            priodicity      INTEGER NOT NULL,
+            id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
+        )", []
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS savings (
+            id_saving       INTEGER PRIMARY KEY,
+            name            TEXT NOT NULL,
+            goal            INTEGER NOT NULL,
+            balance         INTEGER NOT NULL,
+            id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
+        )", []
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS msi_purchases (
+            id_msi          INTEGER PRIMARY KEY,
+            name            TEXT NOT NULL,
+            price           INTEGER NOT NULL,
+            installments    INTEGER NOT NULL,
+            months_paid     INTEGER NOT NULL,
+            id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
+        )", []
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS queued_purchases (
+            id_queued       INTEGER PRIMARY KEY,
+            message         TEXT NOT NULL,
+            price           INTEGER NOT NULL,
+            id_account      INTEGER NOT NULL,
+            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
+        )", []
+    )?;
+
+    conn.close().unwrap();
+
+    Ok(())
+}
+
+pub fn list(table_name: &str, count: i64) -> rusqlite::Result<()> {
+    let conn = Connection::open(DB_NAME)?;
+    let mut stmt = conn.prepare(&format!("SELECT * FROM {} LIMIT {}", table_name, count))?;
+
+    let items = match table_name {
+        "accounts" => stmt.query_map([], |row| Ok(Account::from_row(row)))?,
+        _ => panic!("Not implemented yet!")
+    };
+
+    let mut items_len = 0;
+
+    for item in items {
+        items_len += 1;
+        println!("{}", item.unwrap());
+    }
+
+    if items_len == 0 {
+        println!("Table '{}' is empty! Try 'wallet new --help'.", table_name);
+    }
+
+    stmt.finalize()?;
+    conn.close().unwrap();
+    Ok(())
+}
+
 
 // Functions to read/write rows using structs.
 fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Result<Account> {
@@ -37,21 +155,21 @@ fn select_account(conn: &Connection, opt_str_id: Option<&str>) -> rusqlite::Resu
     Ok(account)
 }
 
-fn update_account(conn: &Connection, account: &Account) {
+fn update_account(conn: &Connection, account: &Account) -> rusqlite::Result<()> {
     let int_balance: i64 = (account.balance * 100.0).round() as i64;
-    
-    match conn.execute(
+    let int_available: i64 = (account.available * 100.0).round() as i64;
+
+    conn.execute(
         "UPDATE accounts
-        SET name = ?1, balance = ?2
-        WHERE id_account = ?3
+        SET name = ?1, balance = ?2, available = ?3
+        WHERE id_account = ?4
         ",
-        params![&account.name, int_balance, account.id]
-    ) {
-        Ok(1) => println!("Successfully updated account data!"),
-        Ok(_) => println!("More than one row was updated! Please check the consistency of IDs..."),
-        Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
-    }
+        params![&account.name, int_balance, int_available, account.id]
+    )?;
+
+    Ok(())
 }
+
 
 // Wallet 'account' subcommands are defined below.
 pub fn account_default(id: &str) -> rusqlite::Result<()> {
@@ -148,6 +266,8 @@ pub fn account_edit(
     }
 
     if let Some(balance) = opt_balance {
+        let original_balance = account.balance;
+
         account.balance = match balance.parse::<f64>() {
             Ok(new_balance) => {
                 value_received = true;
@@ -156,7 +276,10 @@ pub fn account_edit(
             Err(_) => {
                 panic!("Invalid value for balance '{}'! Please enter a valid real number...", balance);
             }
-        }
+        };
+
+        let diff = account_balance - original_balance;
+        account.available += diff;
     }
 
     if !value_received {
@@ -166,128 +289,16 @@ pub fn account_edit(
         return Ok(());
     }
 
-    update_account(&conn, &account);
+    match update_account(&conn, &account) {
+        Ok(_) => println!("Successfully updated account data!"),
+        Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
+    }
 
     println!("Resulting account:\n{}", account);
 
     Ok(())
 }
 
-// Wallet subcommands are defined below.
-pub fn backup_database(backup_path: &PathBuf) -> Result<(), io::Error> {
-    match fs::copy(DB_NAME, backup_path.to_str().unwrap()) {
-        Ok(_) => println!("Backup created successfully!"),
-        Err(e) => {
-            match e.kind() {
-                io::ErrorKind::NotFound => println!("Database does not exists! Try 'wallet init'..."),
-                _ => println!("Something went wrong! Error: {}", e),
-            }
-        }
-    }
-
-    Ok(())
-}
-
-pub fn initialize_database() -> rusqlite::Result<()> {
-    let conn = Connection::open(DB_NAME)?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS accounts (
-            id_account      INTEGER PRIMARY KEY,
-            name            TEXT NOT NULL,
-            balance         INTEGER DEFAULT 0,
-            available       INTEGER DEFAULT 0,
-            is_default      INTEGER DEFAULT 0
-        )", []
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS transactions (
-            id_transaction  INTEGER PRIMARY KEY,
-            message         TEXT NOT NULL,
-            value           INTEGER NOT NULL,
-            date            INTEGER NOT NULL,
-            charged         INTEGER DEFAULT 0,
-            flow_type       INTEGER NOT NULL,
-            id_account      INTEGER NOT NULL,
-            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
-        )", []
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS payments (
-            id_payment    INTEGER PRIMARY KEY,
-            name            TEXT NOT NULL,
-            price           INTEGER NOT NULL,
-            billing_date    INTEGER NOT NULL,
-            priodicity      INTEGER NOT NULL,
-            id_account      INTEGER NOT NULL,
-            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
-        )", []
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS savings (
-            id_saving       INTEGER PRIMARY KEY,
-            name            TEXT NOT NULL,
-            goal            INTEGER NOT NULL,
-            balance         INTEGER NOT NULL,
-            id_account      INTEGER NOT NULL,
-            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
-        )", []
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS msi_purchases (
-            id_msi          INTEGER PRIMARY KEY,
-            name            TEXT NOT NULL,
-            price           INTEGER NOT NULL,
-            installments    INTEGER NOT NULL,
-            months_paid     INTEGER NOT NULL,
-            id_account      INTEGER NOT NULL,
-            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
-        )", []
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS queued_purchases (
-            id_queued       INTEGER PRIMARY KEY,
-            message         TEXT NOT NULL,
-            price           INTEGER NOT NULL,
-            id_account      INTEGER NOT NULL,
-            FOREIGN KEY (id_account) REFERENCES accounts (id_account)
-        )", []
-    )?;
-
-    conn.close().unwrap();
-
-    Ok(())
-}
-
-pub fn list(table_name: &str, count: i64) -> rusqlite::Result<()> {
-    let conn = Connection::open(DB_NAME)?;
-    let mut stmt = conn.prepare(&format!("SELECT * FROM {} LIMIT {}", table_name, count))?;
-
-    let items = match table_name {
-        "accounts" => stmt.query_map([], |row| Ok(Account::from_row(row)))?,
-        _ => panic!("Not implemented yet!")
-    };
-
-    let mut items_len = 0;
-
-    for item in items {
-        items_len += 1;
-        println!("{}", item.unwrap());
-    }
-
-    if items_len == 0 {
-        println!("Table '{}' is empty! Try 'wallet new --help'.", table_name);
-    }
-
-    stmt.finalize()?;
-    conn.close().unwrap();
-    Ok(())
-}
 
 // Wallet 'new' subcommands are defined below.
 pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
@@ -320,27 +331,66 @@ pub fn new_account(name: &str, balance: f64) -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn new_expense(
-            message: &str, value: f64, charged: bool, force_price: bool,
+pub fn new_transaction(
+            message: &str, value: f64, t_type: i64, charged: bool, force_price: bool,
             opt_id_account: Option<&str>
         ) -> rusqlite::Result<()> {
     let conn = Connection::open(DB_NAME)?;
 
-    let account = select_account(&conn, opt_id_account)?;
+    let mut account = select_account(&conn, opt_id_account)?;
 
     if value < 0.01 {
-        println!("The value of an expense must be at least one cent '0.01'!");
+        println!("The value of a transaction must be at least one cent '0.01'!");
 
         return Ok(());
-    }
-    else if value > account.available && !force_price {
+    } else if t_type == 0 && value > account.available && !force_price {
         println!("The account '{}' has no money enough for this purchase!", account.name);
         println!("Available balance is {} and the purchase price is {}.", account.available, value);
 
         return Ok(());
     }
 
-    println!("{}", account);
+    let int_value: i64 = (value * 100.0).round() as i64;
+    let int_charged: i64 = if charged { 1 } else { 0 };
+
+    let julian_date: i64;
+    {
+        let local_date: DateTime<Local> = Local::now();
+        let str_date = local_date.to_rfc3339().get(0..10).unwrap().to_string();
+        
+        let parse_format = format_description::parse("[year]-[month]-[day]").unwrap();
+        let date = Date::parse(&str_date, &parse_format).unwrap();
+
+        julian_date = date.to_julian_day() as i64;
+    }
+
+    let result = conn.execute(
+        "INSERT INTO transactions (message, value, date, charged, t_type, id_account)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![message, int_value, julian_date, int_charged, t_type, account.id]
+    )
+
+    match result {
+        Ok(_) => {
+            if t_type == 0 {
+                account.available -= value;
+                if charged {
+                    account.balance -= value;
+                }
+            } else if t_type == 1{
+                account.available += value;
+                account.balance += value;
+            }
+
+            match update_account(&conn, &account) {
+                Ok(_) => println!("Successfully updated account data!"),
+                Err(e) => utils::validate_tables(&format!("{}", e), "accounts")
+            }
+        },
+        Err(e) => {
+            utils::validate_tables(&format!("{}", e), "accounts");
+        }
+    }
 
     Ok(())
 }
