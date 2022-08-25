@@ -111,7 +111,8 @@ pub fn cli() -> Command<'static> {
                         .arg_required_else_help(true)
                         .args(&[
                             arg!([MESSAGE] "Message of the incomming."),
-                            arg!([VALUE] "Value of the incomming.")
+                            arg!([VALUE] "Value of the incomming."),
+                            arg!(-a --account <ACCOUNT> "ID of the account of this incomming. *Only if is not the default account.").required(false)
                         ])
                 )
                 .subcommand(
