@@ -77,13 +77,18 @@ fn main() {
                     let force_price = args.is_present("force_price");
                     let opt_id_account = args.value_of("account");
 
-                    walletdb::new_expense(&message, value, charged, force_price, opt_id_account).unwrap();
+                    walletdb::new_transaction(
+                        &message, value, 0, charged, force_price, opt_id_account
+                    ).unwrap();
                 }
                 ("incoming", args) => {
                     let message = args.value_of("MESSAGE").expect("Required...");
                     let value: f64 = args.value_of_t("VALUE").expect("Required...");
+                    let opt_id_account = args.value_of("account");
 
-                    println!("New incoming: {} - {:.2}", &message, &value);
+                    walletdb::new_transaction(
+                        &message, value, 1, true, false, opt_id_account
+                    ).unwrap();
                 }
                 _ => unreachable!()
             }
