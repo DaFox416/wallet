@@ -278,7 +278,7 @@ pub fn account_edit(
             }
         };
 
-        let diff = account_balance - original_balance;
+        let diff = account.balance - original_balance;
         account.available += diff;
     }
 
@@ -368,7 +368,7 @@ pub fn new_transaction(
         "INSERT INTO transactions (message, value, date, charged, t_type, id_account)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![message, int_value, julian_date, int_charged, t_type, account.id]
-    )
+    );
 
     match result {
         Ok(_) => {
